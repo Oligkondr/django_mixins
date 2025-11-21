@@ -80,7 +80,7 @@ class MediaForm(forms.Form):
             })
         elif media_type == 'audiobook':
             media_data.update({
-                'audiobook_duration': self.cleaned_data['audiobook_duration'],
+                'duration': self.cleaned_data['audiobook_duration'],
                 'narrator': self.cleaned_data['narrator']
             })
         elif media_type == 'movie':
