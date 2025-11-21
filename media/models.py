@@ -23,7 +23,6 @@ class MediaItem(models.Model):
         return f"MEDIA_{self.title[:5].upper()}"
 
 
-
 class Book(BorrowableMixin, MediaItem):
     isbn = models.CharField(max_length=20)
     page_count = models.IntegerField()
@@ -39,6 +38,7 @@ class Book(BorrowableMixin, MediaItem):
     def get_media_type(self):
         return "book"
 
+
 class Movie(DownloadableMixin, MediaItem):
     duration = models.IntegerField()
     format = models.CharField(max_length=10)
@@ -51,6 +51,7 @@ class Movie(DownloadableMixin, MediaItem):
 
     def get_media_type(self):
         return "movie"
+
 
 class AudioBook(DownloadableMixin, BorrowableMixin, MediaItem):
     duration = models.IntegerField()

@@ -4,7 +4,7 @@ from django.shortcuts import render, redirect
 from django.views.generic import ListView, DetailView, TemplateView
 
 from .forms import MediaForm
-from .models import Book, AudioBook
+from .models import Book, AudioBook, Movie
 from .services import MediaFactory
 
 
@@ -14,14 +14,18 @@ class MediaListView(ListView):
 
     def get_queryset(self):
         books = list(Book.objects.all())
+        # print(f'Books: {books[1].get_media_type()}')
         audiobooks = list(AudioBook.objects.all())
-        return books + audiobooks
+        movies = list(Movie.objects.all())
+
+        return books + audiobooks + movies
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         # Группируем по типам для отображения
         context['books'] = Book.objects.all()
         context['audiobooks'] = AudioBook.objects.all()
+        context['movies'] = Movie.objects.all()
         return context
 
 
@@ -31,14 +35,13 @@ class MediaDetailView(DetailView):
 
     def get_object(self):
         pk = self.kwargs.get('pk')
+        media_type = self.get_media_type()
         # Используем фабрику для определения типа медиа
-        for media_type in MediaFactory.get_all_media_types():
-            media_class = MediaFactory.get_media_class(media_type)
-            try:
-                return media_class.objects.get(pk=pk)
-            except media_class.DoesNotExist:
-                continue
-        raise Book.DoesNotExist("Media item not found")
+        media_class = MediaFactory.get_media_class(media_type)
+        try:
+            return media_class.objects.get(pk=pk)
+        except media_class.DoesNotExist:
+            raise Book.DoesNotExist("Media item not found")
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -46,7 +49,9 @@ class MediaDetailView(DetailView):
 
         # Определяем доступные действия на основе типа объекта и миксинов
         context['available_actions'] = self.get_available_actions(media_item)
-        context['media_type'] = self.get_media_type(media_item)
+        # print(self.get_media_type(media_item))
+        # context['media_type'] = self.get_media_type(media_item)
+        context['media_type'] = self.get_media_type()
 
         return context
 
@@ -71,12 +76,15 @@ class MediaDetailView(DetailView):
 
         return actions
 
-    def get_media_type(self, media_item):
-        if isinstance(media_item, Book):
-            return 'book'
-        elif isinstance(media_item, AudioBook):
-            return 'audiobook'
-        return 'unknown'
+    def get_media_type(self):
+        return self.kwargs.get('media_type')
+        # if isinstance(media_item, Book):
+        #     return 'book'
+        # if isinstance(media_item, Movie):
+        #     return 'movie'
+        # elif isinstance(media_item, AudioBook):
+        #     return 'audiobook'
+        # return 'unknown'
 
 
 class MediaCreateView(TemplateView):
@@ -88,10 +96,12 @@ class MediaCreateView(TemplateView):
 
     def post(self, request, *args, **kwargs):
         form = MediaForm(request.POST)
+        print(f'Valid: {form.is_valid()}')
         if form.is_valid():
             # Используем фабрику через форму
             form.save()
             return redirect('media_library:media_list')
+        print(form.errors)
         return render(request, self.template_name, {'form': form})
 
 
@@ -114,6 +124,11 @@ def media_action(request, media_type, item_id):
             'download': lambda obj: obj.download(),
             'borrow': lambda obj: obj.borrow(request.user.username if request.user.is_authenticated else 'Гость'),
             'play_trailer': lambda obj: "Аудиокниги не имеют трейлеров",
+        },
+        'movie': {
+            'describe': lambda obj: obj.get_description(),
+            'play_trailer': lambda obj: obj.play_trailer(),
+            'download': lambda obj: obj.download(),
         }
     }
 
@@ -155,7 +170,6 @@ def borrow_media(request, pk):
 
 
 def download_media(request, pk):
-
     for media_type in MediaFactory.get_all_media_types():
         media_class = MediaFactory.get_media_class(media_type)
         try:

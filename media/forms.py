@@ -7,6 +7,7 @@ class MediaForm(forms.Form):
     MEDIA_TYPES = [
         ('book', 'Книга'),
         ('audiobook', 'Аудиокнига'),
+        ('movie', 'Фильм'),
     ]
 
     media_type = forms.ChoiceField(choices=MEDIA_TYPES, label='Тип медиа')
@@ -25,6 +26,10 @@ class MediaForm(forms.Form):
     # Поля для аудиокниг
     narrator = forms.CharField(max_length=100, required=False, label='Чтец')
     audiobook_duration = forms.IntegerField(required=False, label='Длительность аудиокниги (минуты)', min_value=1)
+
+    # Поля для фильмов
+    format = forms.CharField(max_length=100, required=False, label='Формат')
+    duration = forms.IntegerField(required=False, label='Длительность фильма (минуты)', min_value=1)
 
     def __init__(self, *args, **kwargs):
         kwargs.pop('instance', None)
@@ -47,6 +52,14 @@ class MediaForm(forms.Form):
             if not cleaned_data.get('audiobook_duration'):
                 self.add_error('audiobook_duration', 'Длительность обязательна для аудиокниг')
 
+        elif media_type == 'movie':
+            if not cleaned_data.get('duration'):
+                print(f'Duration: {cleaned_data.get('duration')}')
+
+                self.add_error('duration', 'Длительность обязательна для фильмов')
+            if not cleaned_data.get('format'):
+                self.add_error('format', 'Формат обязателен для фильмов')
+
         return cleaned_data
 
     def save(self):
@@ -67,8 +80,13 @@ class MediaForm(forms.Form):
             })
         elif media_type == 'audiobook':
             media_data.update({
-                'duration': self.cleaned_data['audiobook_duration'],
+                'audiobook_duration': self.cleaned_data['audiobook_duration'],
                 'narrator': self.cleaned_data['narrator']
+            })
+        elif media_type == 'movie':
+            media_data.update({
+                'duration': self.cleaned_data['duration'],
+                'format': self.cleaned_data['format']
             })
 
         # Используем фабрику для создания объекта
